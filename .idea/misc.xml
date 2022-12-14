@@ -3,6 +3,7 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="../../../../../layout/custom_preview.xml" value="0.2677083333333333" />
         <entry key="..\:/Users/karlo/Downloads/iSpeed-master/iSpeed-master/app/src/main/res/layout/activity_export.xml" value="0.371875" />
         <entry key="..\:/Users/karlo/Downloads/iSpeed-master/iSpeed-master/app/src/main/res/layout/activity_geo_map.xml" value="0.371875" />
         <entry key="..\:/Users/karlo/Downloads/iSpeed-master/iSpeed-master/app/src/main/res/layout/activity_main.xml" value="0.371875" />
@@ -10,6 +11,12 @@
         <entry key="..\:/Users/karlo/Downloads/iSpeed-master/iSpeed-master/app/src/main/res/layout/layout_forgotpassword_dialog.xml" value="0.371875" />
         <entry key="..\:/Users/karlo/Downloads/iSpeed-master/iSpeed-master/app/src/main/res/layout/layout_save_data_dialog.xml" value="0.371875" />
         <entry key="..\:/Users/payathought/StudioProjects/iSpeed/app/src/main/res/layout/activity_home.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/activity_auto_matic_tracking.xml" value="0.1" />
+        <entry key="app/src/main/res/layout/activity_dashboard_main.xml" value="0.165" />
+        <entry key="app/src/main/res/layout/activity_export.xml" value="0.1331521739130435" />
+        <entry key="app/src/main/res/layout/activity_geo_map.xml" value="0.1852355072463768" />
+        <entry key="app/src/main/res/layout/activity_home.xml" value="0.25" />
+        <entry key="app/src/main/res/layout/layout_save_data_dialog.xml" value="0.1852355072463768" />
       </map>
     </option>
   </component>

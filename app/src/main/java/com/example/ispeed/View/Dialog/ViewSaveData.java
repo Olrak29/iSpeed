@@ -177,7 +177,7 @@ public class ViewSaveData extends AppCompatDialogFragment {
 
 
             Toasty.info(getActivity(),
-                            "Check Exported Image on your gallery.", Toast.LENGTH_LONG)
+                    "Check Exported Image on your gallery.", Toast.LENGTH_LONG)
                     .show();
             Log.d(TAG, "captureScreen: " + imageFile.toString());
             return imageFile;

@@ -1,26 +1,43 @@
 package com.example.ispeed.View;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.cardview.widget.CardView;
+import androidx.core.app.ActivityCompat;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
+import android.location.Location;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.example.ispeed.FunctionMethod.FunctionMethod;
 import com.example.ispeed.Model.InternetDataModel;
 import com.example.ispeed.R;
+import com.example.ispeed.service.AutoMaticTrackingActivity;
+import com.example.ispeed.service.MyService;
 import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.Timestamp;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -31,10 +48,13 @@ import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 public class DashboardMainActivity extends AppCompatActivity {
     BarChart bc_downloadSpeed,bc_ping,bc_uploadSpeed;
@@ -51,7 +71,12 @@ public class DashboardMainActivity extends AppCompatActivity {
     String filterStartingHour = "";
     String filterEndingHour = "";
 
-
+    Button btn_startTracking,btn_stopTracking;
+    String currentLocation;
+    FunctionMethod functionMethod;
+    GoogleApiClient googleApiClient;
+    private FusedLocationProviderClient fusedLocationClient;
+    private static final int REQUEST_LOCATION = 1;
 
 
     @Override
@@ -75,73 +100,109 @@ public class DashboardMainActivity extends AppCompatActivity {
         cv_ping = findViewById(R.id.cv_ping);
         cv_uploadSpeed = findViewById(R.id.cv_uploadSpeed);
 
+        btn_startTracking = findViewById(R.id.btn_startTracking);
+        btn_stopTracking = findViewById(R.id.btn_stopTracking);
 
+        functionMethod = new FunctionMethod();
+        if(googleApiClient == null) {
+            googleApiClient = new GoogleApiClient.Builder(this)
+                .addApi(LocationServices.API)
+                .addConnectionCallbacks(new GoogleApiClient.ConnectionCallbacks() {
+                    @Override
+                    public void onConnected(Bundle bundle) { }
+                    @Override
+                    public void onConnectionSuspended(int i) {
+                        googleApiClient.connect();
+                    }
+                })
+                .addOnConnectionFailedListener(connectionResult -> { }).build();
+            googleApiClient.connect();
+        }
+        db = FirebaseFirestore.getInstance();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
+        }
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        fusedLocationClient.getLastLocation()
+        .addOnSuccessListener(this, location -> {
+            // Got last known location. In some rare situations this can be null.
+            if (location != null) {
+                Log.d(TAG, "onSuccess: " + location.getLatitude());
+                try {
+                    if (ActivityCompat.checkSelfPermission(
+                            getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                            getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions( (Activity) getApplicationContext() , new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, REQUEST_LOCATION);
+                    } else {
+                        double lat = location.getLatitude();
+                        double longi = location.getLongitude();
 
+                        Geocoder geo = new Geocoder(getBaseContext(), Locale.getDefault());
+                        List<Address> addresses = geo.getFromLocation(lat, longi, 1);
 
-
-        btn_settings.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                startActivity(new Intent(getApplicationContext(), SettingsActivity.class));
-
-
-            }
-        });
-        btn_export.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getBaseContext(), ExportActivity.class);
-                intent.putExtra("date",filterDay);
-                intent.putExtra("start",filterStartingHour);
-                intent.putExtra("end",filterEndingHour);
-                startActivity(intent);
-            }
-        });
-
-        bc_downloadSpeed.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
-                intent.putExtra("type", "download");
-                intent.putExtra("date",filterDay);
-                intent.putExtra("start",filterStartingHour);
-                intent.putExtra("end",filterEndingHour);
-                startActivity(intent);
-
-
-            }
-        });
-
-
-        bc_uploadSpeed.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
-                intent.putExtra("type", "upload");
-                intent.putExtra("date",filterDay);
-                intent.putExtra("start",filterStartingHour);
-                intent.putExtra("end",filterEndingHour);
-                startActivity(intent);
-
-            }
-        });
-        bc_ping.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
-                intent.putExtra("type", "ping");
-                intent.putExtra("date",filterDay);
-                intent.putExtra("start",filterStartingHour);
-                intent.putExtra("end",filterEndingHour);
-                startActivity(intent);
-
+                        currentLocation = addresses.get(0).getLocality();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
+        btn_startTracking.setOnClickListener(view -> {
+            Intent startServiceIntent = new Intent(this, MyService.class);
+            startServiceIntent.putExtra("loc",currentLocation);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(startServiceIntent);
+            } else {
+                startService(startServiceIntent);
+            }
+        });
+
+        btn_stopTracking.setOnClickListener(view -> {
+            Intent stopServiceIntent = new Intent(this, MyService.class);
+            stopServiceIntent.putExtra("loc",currentLocation);
+            stopService(stopServiceIntent);
+        });
+
+        btn_settings.setOnClickListener(view -> startActivity(new Intent(getApplicationContext(), SettingsActivity.class)));
+
+        btn_export.setOnClickListener(view -> {
+            Intent intent = new Intent(getBaseContext(), ExportActivity.class);
+            intent.putExtra("date",filterDay);
+            intent.putExtra("start",filterStartingHour);
+            intent.putExtra("end",filterEndingHour);
+            startActivity(intent);
+        });
+
+        bc_downloadSpeed.setOnClickListener(view -> {
+            Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
+            intent.putExtra("type", "download");
+            intent.putExtra("date",filterDay);
+            intent.putExtra("start",filterStartingHour);
+            intent.putExtra("end",filterEndingHour);
+            startActivity(intent);
+        });
 
 
+        bc_uploadSpeed.setOnClickListener(view -> {
+            Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
+            intent.putExtra("type", "upload");
+            intent.putExtra("date",filterDay);
+            intent.putExtra("start",filterStartingHour);
+            intent.putExtra("end",filterEndingHour);
+            startActivity(intent);
 
+        });
 
+        bc_ping.setOnClickListener(view -> {
+            Intent intent = new Intent(getBaseContext(), ViewDashboardContentActivity.class);
+            intent.putExtra("type", "ping");
+            intent.putExtra("date",filterDay);
+            intent.putExtra("start",filterStartingHour);
+            intent.putExtra("end",filterEndingHour);
+            startActivity(intent);
+        });
     }
 
     @Override
@@ -150,7 +211,6 @@ public class DashboardMainActivity extends AppCompatActivity {
         if ((getIntent().getStringExtra("date") !=null &&
                 getIntent().getStringExtra("start") !=null &&
                 getIntent().getStringExtra("end") !=null)
-
         ){
             filterDay = getIntent().getStringExtra("date");
             filterStartingHour = getIntent().getStringExtra("start");
@@ -160,13 +220,12 @@ public class DashboardMainActivity extends AppCompatActivity {
 
             getDataWithFilters();
 
-        }else{
+        } else {
             getData();
         }
     }
 
     public void getData(){
-
         db.collection(getString(R.string.COLLECTION_INTERNET_SPEED_DATA))
                 .whereEqualTo("user_id",firebaseUser.getUid())
                 .orderBy("time", Query.Direction.ASCENDING)

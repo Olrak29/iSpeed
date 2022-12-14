@@ -2,10 +2,12 @@ package com.example.ispeed.View;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -13,6 +15,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -38,7 +41,6 @@ import com.example.ispeed.GetSpeedTestHostsHandler;
 import com.example.ispeed.MainActivity;
 import com.example.ispeed.Model.InternetDataModel;
 import com.example.ispeed.R;
-import com.example.ispeed.View.Dialog.ViewSaveData;
 import com.example.ispeed.test.HttpDownloadTest;
 import com.example.ispeed.test.HttpUploadTest;
 import com.example.ispeed.test.PingTest;
@@ -93,9 +95,12 @@ public class GeoMapActivity extends AppCompatActivity implements
         OnMapReadyCallback, PermissionsListener {
 
     private PermissionsManager permissionsManager;
-    private MapboxMap mapboxMap;
+    static MapboxMap mapboxMap;
     private MapView mapView;
     private Location currentLocation;
+
+    private ConstraintLayout parentLayout;
+    static Activity activity = null;
 
     String currentLocForSavingData;
     private static final String TAG = "GeoMapActivityGeoMapActivity";
@@ -135,6 +140,9 @@ public class GeoMapActivity extends AppCompatActivity implements
 
         setContentView(R.layout.activity_geo_map);
         final DecimalFormat dec = new DecimalFormat("#.##");
+        parentLayout = findViewById(R.id.parentLayout);
+        activity = this;
+
         mapView = findViewById(R.id.mb_user);
         myLocationButton = findViewById(R.id.myLocationButton);
         tv_userInternet = findViewById(R.id.tv_userInternet);
@@ -670,19 +678,11 @@ public class GeoMapActivity extends AppCompatActivity implements
                                 dataModel.setTime(null);
                                 dataModel.setUser_id(firebaseUser.getUid());
 
-                                //ViewSaveData dialog = new ViewSaveData(dataModel);
-                                //dialog.show(getSupportFragmentManager(), "iSpeed");
-
                                 btn_measureNow.setEnabled(true);
                                 btn_measureNow.setTextSize(16);
                                 btn_measureNow.setText("Measure Now");
-                                captureMapScreen(getWindow().getDecorView().getRootView());
-                               View rootView = findViewById(R.id.mb_user);
-                                //View rootView = findViewById(GeoMapActivity.this);
-                                Bitmap bitmap = takeMapScreenshot(rootView);
-                                saveBitmap(bitmap);
 
-
+                                captureMapScreen(parentLayout.getRootView());
                             }
                         });
 
@@ -745,7 +745,8 @@ public class GeoMapActivity extends AppCompatActivity implements
 
     //--
 
-    public File captureMapScreen(View view) {
+    public static File captureMapScreen(View view) {
+
         Date date = new Date();
 
         SimpleDateFormat formatter = new SimpleDateFormat("MMMM dd, yyyy");
@@ -764,7 +765,6 @@ public class GeoMapActivity extends AppCompatActivity implements
 
 
             view.setDrawingCacheEnabled(true);
-            Bitmap bitmap = Bitmap.createBitmap(view.getWidth(),view.getHeight(),Bitmap.Config.ARGB_8888);
 
             view.setDrawingCacheEnabled(false);
 
@@ -772,18 +772,18 @@ public class GeoMapActivity extends AppCompatActivity implements
 
             FileOutputStream fileOutputStream = new FileOutputStream(imageFile);
 
-            int quality = 100;
-            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
-            fileOutputStream.flush();
-            fileOutputStream.close();
-
-//            openScreenshot(imageFile);
-
-
-            Toasty.info(GeoMapActivity.this,
-                            "Check Exported Image on your gallery.", Toast.LENGTH_LONG)
-                    .show();
-            Log.d(TAG, "captureScreen: " + imageFile.toString());
+            GeoMapActivity.mapboxMap.snapshot(bitmap -> {
+                int quality = 100;
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality, fileOutputStream);
+                try {
+                    fileOutputStream.flush();
+                    fileOutputStream.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                GeoMapActivity.showToastMessage(GeoMapActivity.activity, "Check Exported Image on your gallery.");
+                Log.d(TAG, "captureScreen: " + imageFile.toString());
+            });
             return imageFile;
 
 
@@ -800,7 +800,9 @@ public class GeoMapActivity extends AppCompatActivity implements
 
     }
 
-
+    public static void showToastMessage(Context context, String message) {
+        Toasty.info(context, message, Toast.LENGTH_LONG).show();
+    }
 
     @Override
     public void onMapReady(@NonNull final MapboxMap mapboxMap) {
